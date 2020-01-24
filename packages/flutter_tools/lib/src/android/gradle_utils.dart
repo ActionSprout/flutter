@@ -281,7 +281,11 @@ void updateLocalProperties({
       buildInfo.buildNumber ?? project.manifest.buildNumber,
       globals.logger,
     );
-    changeIfNecessary('flutter.versionCode', buildNumber?.toString());
+    final String versionCode = calculateMonotonicVersionCode(
+      buildName,
+      buildNumber,
+    );
+    changeIfNecessary('flutter.versionCode', versionCode);
   }
 
   if (changed) {
@@ -306,4 +310,23 @@ void exitWithNoSdkMessage() {
     '$warningMark No Android SDK found. '
     'Try setting the ANDROID_SDK_ROOT environment variable.'
   );
+}
+
+/// Returns a numerical String based on [buildName] (higher priority) and
+/// [buildNumber] (lower priority) that is guaranteed to monotonically
+/// increase.
+String calculateMonotonicVersionCode(String buildName, String buildNumber) {
+  final List<String> nameDigits = buildName?.split('.') ?? [];
+  final String number = buildNumber ?? '0';
+
+  if (number.length > 3 || nameDigits.any((String d) => d.length > 2)) {
+    throw ToolExit('Version must fit within 99.99.99+999.');
+  }
+
+  final List<String> paddedDigits = <String>[
+    ...nameDigits.map((String digit) => digit.padLeft(2, '0')),
+    number.padLeft(3, '0'),
+  ];
+
+  return paddedDigits.join().replaceFirst(RegExp(r'^0*'), '');
 }
